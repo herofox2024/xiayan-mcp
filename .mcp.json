@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "xiayan-mcp": {
+      "command": "python",
+      "args": [
+        "e:\\资料\\文颜公众号MCP\\xiayan-mcp\\run.py"
+      ],
+      "cwd": "e:\\资料\\文颜公众号MCP\\xiayan-mcp"
+    }
+  },
+  "disabledMcpServers": []
+}

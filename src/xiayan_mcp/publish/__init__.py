@@ -1,0 +1,1 @@
+"""Publish functionality for WeChat integration."""

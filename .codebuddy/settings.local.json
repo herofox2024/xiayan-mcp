@@ -1,0 +1,8 @@
+{
+  "enabledMcpServers": [
+    "xiayan-mcp"
+  ],
+  "disabledMcpServers": [],
+  "enableAllProjectMcpServers": true,
+  "disabledMcpjsonServers": []
+}
