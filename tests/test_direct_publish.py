@@ -14,8 +14,8 @@ async def direct_publish_test():
     token_url = "https://api.weixin.qq.com/cgi-bin/stable_token"
     token_data = {
         "grant_type": "client_credential",
-        "appid": "wx3da7a7213cc83ac6",
-        "secret": "e19787cb760008dbd22c0a3f0bfe7385",
+        "appid": "your_wechat_app_id",
+        "secret": "your_wechat_app_secret",
         "force_refresh": False
     }
     
