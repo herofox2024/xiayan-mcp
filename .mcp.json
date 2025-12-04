@@ -4,11 +4,11 @@
       "name": "夏颜公众号助手",
       "command": "python",
       "args": [
-        "e:\\资料\\文颜公众号MCP\\xiayan-mcp\\mcp_server.py"
+        "e:\\资料\\文颜公众号MCP\\xiayan-mcp\\run.py"
       ],
       "env": {
-        "WECHAT_APP_ID": "wx3da7a7213cc83ac6",
-        "WECHAT_APP_SECRET": "e19787cb760008dbd22c0a3f0bfe7385"
+        "WECHAT_APP_ID": "your_wechat_app_id_here",
+        "WECHAT_APP_SECRET": "your_wechat_app_secret_here"
       },
       "cwd": "e:\\资料\\文颜公众号MCP\\xiayan-mcp"
     }
