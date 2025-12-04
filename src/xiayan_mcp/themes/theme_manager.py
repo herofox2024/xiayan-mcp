@@ -81,9 +81,117 @@ class ThemeManager:
             return self._themes["default"]
         return theme
 
-    def get_available_themes(self) -> List[Theme]:
-        """Get list of all available themes."""
-        return list(self._themes.values())
+    def get_available_themes(self) -> List[Dict]:
+        """Get list of all available themes with detailed information."""
+        return [{
+            'id': theme.id,
+            'name': theme.name,
+            'description': theme.description,
+            'has_custom_template': theme.template != self._get_default_template(),
+            'has_custom_css': bool(theme.css_styles and theme.css_styles != self._get_default_css())
+        } for theme in self._themes.values()]
+    
+    def get_theme_preview(self, theme_id: str, sample_content: str = "") -> str:
+        """
+        Get HTML preview of a theme with sample content.
+        
+        Args:
+            theme_id: ID of the theme to preview
+            sample_content: Optional sample content to use for preview
+            
+        Returns:
+            HTML preview of the theme
+        """
+        theme = self.get_theme(theme_id)
+        
+        if not sample_content:
+            sample_content = self._get_default_sample_content()
+        
+        # Render theme template with sample content
+        from jinja2 import Template
+        template = Template(theme.template)
+        
+        return template.render(
+            content=sample_content,
+            css_styles=self._combine_styles(theme.css_styles or "")
+        )
+    
+    def add_custom_theme(self, theme: Theme) -> None:
+        """
+        Add a custom theme to the theme manager.
+        
+        Args:
+            theme: Theme object to add
+        """
+        self._themes[theme.id] = theme
+    
+    def update_theme(self, theme_id: str, **kwargs) -> Theme:
+        """
+        Update an existing theme with new properties.
+        
+        Args:
+            theme_id: ID of the theme to update
+            **kwargs: Theme properties to update
+            
+        Returns:
+            Updated Theme object
+        """
+        theme = self.get_theme(theme_id)
+        
+        # Create a new theme with updated properties
+        updated_theme = Theme(
+            id=theme.id,
+            name=kwargs.get('name', theme.name),
+            description=kwargs.get('description', theme.description),
+            template=kwargs.get('template', theme.template),
+            css_styles=kwargs.get('css_styles', theme.css_styles)
+        )
+        
+        self._themes[theme_id] = updated_theme
+        return updated_theme
+    
+    def _get_default_sample_content(self) -> str:
+        """Get default sample content for theme preview."""
+        return """
+<h1>主题预览示例</h1>
+
+<p>这是一个主题预览的示例内容，用于展示不同主题的样式效果。</p>
+
+<h2>二级标题</h2>
+
+<p>这是一段正文内容，包含一些 <strong>粗体文本</strong> 和 <em>斜体文本</em>。</p>
+
+<h3>三级标题</h3>
+
+<ul>
+    <li>列表项 1</li>
+    <li>列表项 2</li>
+    <li>列表项 3</li>
+</ul>
+
+<ol>
+    <li>有序列表项 1</li>
+    <li>有序列表项 2</li>
+    <li>有序列表项 3</li>
+</ol>
+
+<blockquote>
+    这是一段引用文本，用于展示引用样式。
+</blockquote>
+
+<pre><code>这是一段代码块，用于展示代码样式。
+print("Hello, World!")
+</code></pre>
+
+<p>以上是主题预览的全部内容。</p>
+        """
+    
+    def _combine_styles(self, theme_css: str) -> str:
+        """Combine default styles with theme-specific styles."""
+        default_css = self._get_default_css()
+        if theme_css:
+            return f"{default_css}\n\n{theme_css}"
+        return default_css
 
     def _get_default_template(self) -> str:
         """Get default HTML template."""

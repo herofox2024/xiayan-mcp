@@ -14,4 +14,6 @@ from xiayan_mcp.server import main
 
 
 if __name__ == "__main__":
+    print("=== 夏颜公众号助手 (xiayan-mcp) ===", file=sys.stderr)
+    print("正在启动MCP服务器...", file=sys.stderr)
     asyncio.run(main())

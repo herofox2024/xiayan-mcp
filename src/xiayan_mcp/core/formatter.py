@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup
 from jinja2 import Environment, BaseLoader
 
 from ..themes.theme_manager import ThemeManager
+from ..utils.encoding import enconding_utils
+
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -129,107 +131,23 @@ class MarkdownFormatter:
         }
 
     def fix_encoding(self, content):
-        """修复编码问题"""
-        if not content:
-            return content
-        
-        try:
-            logger.debug(f"原始内容长度: {len(content)}")
-            
-            # 第0步：检测是否需要修复编码
-            if not self._needs_encoding_fix(content):
-                logger.debug("内容正常，无需编码修复")
-                return content
-            
-            # 第1步：修复十六进制编码错误（如 \x3c）
-            step1 = self._fix_hex_encoding(content)
-            
-            # 第2步：选择性解码Unicode转义（仅对明显的转义序列）
-            step2 = self._safe_unicode_decode(step1)
-            
-            # 第3步：解码HTML实体
-            step3 = html.unescape(step2)
-            
-            # 第4步：处理常见编码问题
-            step4 = self._fix_common_encoding_issues(step3)
-            
-            logger.debug(f"修复后内容长度: {len(step4)}")
-            return step4
-            
-        except Exception as e:
-            logger.error(f"修复编码时出错: {e}")
-            return content
+        """修复编码问题（使用统一编码处理工具）"""
+        return enconding_utils.fix_encoding(content)
 
     def _needs_encoding_fix(self, content):
-        """检测是否需要编码修复"""
-        # 检测常见的编码问题
-        encoding_issues = [
-            r'\\x[0-9a-fA-F]{2}',      # 十六进制编码如 \x3c
-            r'\\\\u[0-9a-fA-F]{4}',     # 双反斜杠Unicode转义
-            r'\\\\n|\\\\t|\\\\r',       # 双反斜杠转义字符
-            r'&amp;|&lt;|&gt;|&quot;',  # HTML实体（可能需要解码）
-        ]
-        
-        for pattern in encoding_issues:
-            try:
-                if re.search(pattern, content):
-                    return True
-            except re.error:
-                # 如果正则表达式有错误，跳过该模式
-                continue
-        
-        return False
+        """检测是否需要编码修复（使用统一编码处理工具）"""
+        return enconding_utils.needs_encoding_fix(content)
 
     def _fix_hex_encoding(self, content):
-        """修复十六进制编码问题"""
-        # 只修复明显的十六进制编码错误
-        hex_patterns = [
-            (r'\\x3c', '<'),   # <
-            (r'\\x3e', '>'),   # >
-            (r'\\x22', '"'),   # "
-            (r'\\x27', "'"),    # '
-            (r'\\x5c', '\\'),  # \
-            (r'\\x0a', '\n'),  # 换行
-            (r'\\x0d', '\r'),  # 回车
-            (r'\\x09', '\t'),  # 制表符
-        ]
-        
-        for pattern, replacement in hex_patterns:
-            try:
-                content = re.sub(pattern, replacement, content)
-            except re.error:
-                # 如果正则表达式有错误，跳过该模式
-                continue
-        
-        return content
+        """修复十六进制编码问题（使用统一编码处理工具）"""
+        return enconding_utils.fix_hex_encoding(content)
 
     def _safe_unicode_decode(self, content):
-        """安全的Unicode转义解码，只处理明显的转义序列"""
-        # 检测是否包含需要解码的Unicode转义序列
-        if not re.search(r'\\\\u[0-9a-fA-F]{4}', content):
-            return content
-        
-        try:
-            # 只对包含Unicode转义的部分进行解码
-            def replace_unicode_match(match):
-                unicode_str = match.group(0)
-                # 去掉双反斜杠，进行unicode解码
-                try:
-                    return unicode_str.encode('utf-8').decode('unicode_escape')
-                except:
-                    return unicode_str
-            
-            # 替换所有Unicode转义序列
-            content = re.sub(r'\\\\u[0-9a-fA-F]{4}', replace_unicode_match, content)
-            return content
-            
-        except Exception as e:
-            logger.warning(f"Unicode解码失败: {e}")
-            return content
+        """安全的Unicode转义解码（使用统一编码处理工具）"""
+        return enconding_utils.safe_unicode_decode(content)
 
     def _fix_common_encoding_issues(self, content):
-        """修复常见编码问题（已移至_fix_hex_encoding，保留向后兼容）"""
-        # 此方法保持向后兼容，实际修复逻辑已移至_fix_hex_encoding
+        """修复常见编码问题（使用统一编码处理工具）"""
         return self._fix_hex_encoding(content)
 
     def format(self, content: str, theme_id: str = "default") -> Dict[str, str]:
@@ -369,26 +287,9 @@ class MarkdownFormatter:
             # Apply additional微信兼容的样式
             self._apply_enhanced_styles(soup)
             
-            # Wrap in theme template
-            template_env = Environment(loader=BaseLoader())
-            template = template_env.from_string(theme.template)
-            
-            # Render template with proper encoding handling
-            try:
-                rendered_html = template.render(
-                    content=str(soup),
-                    css_styles=self._combine_styles(theme.css_styles or "")
-                )
-                
-                # 确保正确编码
-                if isinstance(rendered_html, bytes):
-                    rendered_html = rendered_html.decode('utf-8')
-                
-                return rendered_html
-            except Exception as e:
-                logger.error(f"Template rendering error: {e}")
-                # Fallback: return enhanced HTML without template
-                return self._wrap_in_template(str(soup), theme)
+            # 直接使用_wrap_in_template方法，确保主题CSS样式能够正确应用
+            # 这个方法会创建包含CSS样式的完整HTML结构
+            return self._wrap_in_template(str(soup), theme)
                 
         except Exception as e:
             logger.error(f"Applying theme error: {e}")
@@ -396,12 +297,8 @@ class MarkdownFormatter:
 
     def _combine_styles(self, theme_css: str) -> str:
         """组合主题样式和微信兼容样式"""
-        base_style_str = "; ".join([f"{k}: {v}" for k, v in self.base_styles.items()])
-        
-        if theme_css:
-            return f"{base_style_str}; {theme_css}"
-        else:
-            return base_style_str
+        # 返回完整的CSS样式表，确保主题样式能够正确应用
+        return theme_css or ""
 
     def _wrap_in_template(self, content: str, theme: 'Theme') -> str:
         """包装内容到基本微信模板"""

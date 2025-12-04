@@ -1,0 +1,1 @@
+import{_ as t,c as o,a as c,r,o as s}from"./index-BZ-MVW6h.js";const a={class:"article-container"},_={__name:"Article",setup(n){return(i,p)=>{const e=r("router-view");return s(),o("div",a,[c(e)])}}},m=t(_,[["__scopeId","data-v-0f701c39"]]);export{m as default};

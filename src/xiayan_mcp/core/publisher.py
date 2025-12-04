@@ -2,11 +2,158 @@
 
 import os
 import asyncio
+import logging
 from typing import Dict, Optional, List, Union, Tuple
 import aiohttp
 import json
 import mimetypes
 import tempfile
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+logger = logging.getLogger(__name__)
+
+
+# 微信API错误码映射表
+WECHAT_ERROR_CODES = {
+    40001: "无效的凭证（access_token）",
+    40002: "不合法的凭证类型",
+    40003: "不合法的OpenID",
+    40004: "不合法的媒体文件类型",
+    40005: "不合法的文件类型",
+    40006: "不合法的文件大小",
+    40007: "不合法的媒体文件id",
+    40008: "不合法的消息类型",
+    40009: "不合法的图片文件大小",
+    40010: "不合法的语音文件大小",
+    40011: "不合法的视频文件大小",
+    40012: "不合法的缩略图文件大小",
+    40013: "不合法的AppID",
+    40014: "不合法的access_token",
+    40015: "不合法的菜单类型",
+    40016: "不合法的按钮个数",
+    40017: "不合法的按钮个数",
+    40018: "不合法的按钮名字长度",
+    40019: "不合法的按钮KEY长度",
+    40020: "不合法的按钮URL长度",
+    40021: "不合法的菜单版本号",
+    40022: "不合法的子菜单级数",
+    40023: "不合法的子菜单按钮个数",
+    40024: "不合法的子菜单按钮类型",
+    40025: "不合法的子菜单按钮名字长度",
+    40026: "不合法的子菜单按钮KEY长度",
+    40027: "不合法的子菜单按钮URL长度",
+    40028: "不合法的自定义菜单使用用户",
+    40029: "不合法的oauth_code",
+    40030: "不合法的refresh_token",
+    40031: "不合法的openid列表",
+    40032: "不合法的openid列表长度",
+    40033: "不合法的请求字符",
+    40035: "不合法的参数",
+    40038: "不合法的请求格式",
+    40039: "不合法的URL长度",
+    40050: "不合法的分组id",
+    40051: "分组名字不合法",
+    40060: "删除单篇图文时，指定的article_idx不合法",
+    40117: "分组名字不合法",
+    40118: "media_id大小不合法",
+    40119: "button类型错误",
+    40120: "button名字错误",
+    40121: "button KEY错误",
+    40122: "button URL错误",
+    40132: "不合法的媒体文件类型",
+    40137: "不合法的APPID",
+    40155: "不合法的素材类型",
+    41001: "缺少access_token参数",
+    41002: "缺少appid参数",
+    41003: "缺少refresh_token参数",
+    41004: "缺少secret参数",
+    41005: "缺少多媒体文件数据",
+    41006: "缺少media_id参数",
+    41007: "缺少子菜单数据",
+    41008: "缺少oauth code",
+    41009: "缺少openid",
+    42001: "access_token超时",
+    42002: "refresh_token超时",
+    42003: "oauth_code超时",
+    42007: "用户修改微信密码，accesstoken和refreshtoken失效",
+    43002: "需要GET请求",
+    43003: "需要POST请求",
+    43004: "需要HTTPS请求",
+    43005: "需要接收者关注",
+    43006: "需要好友关系",
+    44001: "多媒体文件为空",
+    44002: "POST的数据包为空",
+    44003: "图文消息内容为空",
+    44004: "文本消息内容为空",
+    45001: "多媒体文件大小超过限制",
+    45002: "消息内容超过限制",
+    45003: "标题字段超过限制",
+    45004: "描述字段超过限制",
+    45005: "链接字段超过限制",
+    45006: "图片链接字段超过限制",
+    45007: "语音播放时间超过限制",
+    45008: "图文消息超过限制",
+    45009: "接口调用超过限制",
+    45010: "创建菜单个数超过限制",
+    45011: "API调用太频繁，请稍候再试",
+    45015: "回复时间超过限制",
+    45016: "系统繁忙",
+    45017: "媒体文件格式不正确",
+    45018: "上传的文件不是合法的媒体文件",
+    45019: "上传的缩略图不是合法的图片文件",
+    45022: "图片大小超过限制",
+    45026: "文字消息超过限制",
+    45038: "图文消息title字段超过限制",
+    47001: "解析JSON/XML内容错误",
+    48001: "api功能未授权",
+    50001: "用户未授权该api",
+    50002: "用户受限，可能是违规后接口被封禁",
+    61451: "参数错误(invalid parameter)",
+    61452: "无效客服账号(invalid kf_account)",
+    61453: "客服帐号已存在(kf_account exsited)",
+    61454: "客服帐号名长度超过限制(仅允许10个英文字符，不包括@及@后的公众号的微信号)",
+    61455: "客服帐号名包含非法字符(仅允许英文+数字)",
+    61456: "客服帐号个数超过限制(10个客服账号)",
+    61457: "无效头像文件类型",
+    61450: "系统错误(sys error)",
+    61500: "日期格式错误",
+    61501: "日期范围错误",
+    9001001: "POST数据参数不合法",
+    9001002: "远端服务不可用",
+    9001003: "Ticket不合法",
+    9001004: "获取摇周边ticket失败",
+    9001005: "获取设备ID失败",
+    9001006: "获取openid失败",
+    9001007: "上传文件缺失",
+    9001008: "上传素材的文件类型不合法",
+    9001009: "上传素材的文件尺寸不合法",
+    9001010: "上传失败",
+    9001020: "帐号不合法",
+    9001021: "已有设备激活率低于50%，不能新增设备",
+    9001022: "设备申请数不合法，必须为大于0的数字",
+    9001023: "已存在审核中的设备ID申请",
+    9001024: "一次查询设备ID数量不能超过50",
+    9001025: "设备ID不合法",
+    9001026: "页面ID不合法",
+    9001027: "页面参数不合法",
+    9001028: "一次删除页面ID数量不能超过10",
+    9001029: "页面已应用在设备中，请先解除应用关系",
+    9001030: "一次查询页面ID数量不能超过50",
+    9001031: "时间区间不合法",
+    9001032: "保存设备与页面的绑定关系参数错误",
+    9001033: "门店ID不合法",
+    9001034: "设备备注信息过长",
+    9001035: "设备申请参数不合法",
+    9001036: "查询起始值begin不合法"
+}
 
 
 class WeChatPublisher:
@@ -19,6 +166,27 @@ class WeChatPublisher:
         self.base_url = 'https://api.weixin.qq.com/cgi-bin'
         self.access_token: Optional[str] = None
         self.token_expires_at: Optional[int] = None
+
+    def _handle_wechat_api_error(self, data: Dict, context: str = "操作") -> None:
+        """Handle WeChat API error responses.
+        
+        Args:
+            data: API response data
+            context: Operation context for error message
+        
+        Raises:
+            Exception: With friendly error message
+        """
+        if 'access_token' in data or 'media_id' in data:
+            return  # No error, upload successful
+            
+        errcode = data.get('errcode')
+        errmsg = data.get('errmsg', 'Unknown error')
+        
+        # Get friendly error message from mapping table
+        friendly_msg = WECHAT_ERROR_CODES.get(errcode, errmsg)
+        
+        raise Exception(f"{context}失败: {friendly_msg} (错误码: {errcode})")
 
     async def _get_access_token(self) -> str:
         """Get WeChat API access token using the new stable access token API."""
@@ -50,8 +218,8 @@ class WeChatPublisher:
                     # Get response text and try to parse as JSON regardless of content type
                     response_text = await response.text()
                     
-                    # Debug: Print response for troubleshooting
-                    print(f"DEBUG: Token response: {response_text[:200]}")
+                    # Debug: Log response for troubleshooting
+                    logger.debug(f"Token response: {response_text[:200]}")
                     
                     try:
                         data = json.loads(response_text)
@@ -59,10 +227,8 @@ class WeChatPublisher:
                         content_type = response.headers.get('content-type', '')
                         raise Exception(f"Failed to parse JSON response from {content_type}: {e}\nResponse content: {response_text[:500]}")
                     
-                    if 'access_token' not in data:
-                        error_msg = data.get('errmsg', 'Unknown error')
-                        errcode = data.get('errcode', 'unknown')
-                        raise Exception(f"Failed to get access token: {error_msg} (code: {errcode})")
+                    # Handle API errors
+                    self._handle_wechat_api_error(data, "获取访问令牌")
                     
                     self.access_token = data['access_token']
                     expires_in = data.get('expires_in', 7200)
@@ -71,7 +237,7 @@ class WeChatPublisher:
                     
         except Exception as e:
             # If the old API fails, try the new stable access token API
-            print("Falling back to stable access token API...")
+            logger.info("Falling back to stable access token API...")
             return await self._get_stable_access_token()
 
     async def _get_stable_access_token(self) -> str:
@@ -100,8 +266,8 @@ class WeChatPublisher:
                 # Get response text and try to parse as JSON regardless of content type
                 response_text = await response.text()
                 
-                # Debug: Print response for troubleshooting
-                print(f"DEBUG: Stable token response: {response_text[:200]}")
+                # Debug: Log response for troubleshooting
+                logger.debug(f"Stable token response: {response_text[:200]}")
                 
                 try:
                     result = json.loads(response_text)
@@ -109,14 +275,11 @@ class WeChatPublisher:
                     content_type = response.headers.get('content-type', '')
                     raise Exception(f"Failed to parse JSON response from {content_type}: {e}\nResponse content: {response_text[:500]}")
                 
-                # Check if response contains an error
-                if 'errcode' in result and result['errcode'] != 0:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"Failed to get stable access token: {error_msg} (code: {result['errcode']})")
+                # Handle API errors
+                self._handle_wechat_api_error(result, "获取稳定访问令牌")
                 
                 if 'access_token' not in result or 'expires_in' not in result:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"Invalid response from stable token API: {error_msg}")
+                    raise Exception(f"Invalid response from stable token API: 缺少必要字段")
                 
                 self.access_token = result['access_token']
                 expires_in = result['expires_in']
@@ -194,10 +357,10 @@ class WeChatPublisher:
             
         except ImportError:
             # If PIL is not available, return original path
-            print("Warning: PIL not available, cannot resize image. Install Pillow for image resizing.")
+            logger.warning("PIL not available, cannot resize image. Install Pillow for image resizing.")
             return image_path
         except Exception as e:
-            print(f"Error resizing image: {e}")
+            logger.error(f"Error resizing image: {e}")
             return image_path
 
     async def _upload_media(self, media_path: str, media_type: str = 'image', permanent: bool = False, 
@@ -302,8 +465,8 @@ class WeChatPublisher:
                     # Get response text and try to parse as JSON regardless of content type
                     response_text = await response.text()
                     
-                    # Debug: Print first 200 chars of response for troubleshooting
-                    print(f"DEBUG: Upload response (first 200 chars): {response_text[:200]}")
+                    # Debug: Log first 200 chars of response for troubleshooting
+                    logger.debug(f"Upload response (first 200 chars): {response_text[:200]}")
                     
                     try:
                         result = json.loads(response_text)
@@ -311,14 +474,11 @@ class WeChatPublisher:
                         content_type = response.headers.get('content-type', '')
                         raise Exception(f"Failed to parse JSON response from {content_type}: {e}\nResponse content: {response_text[:500]}")
                     
-                    # Check if response contains an error
-                    if 'errcode' in result and result['errcode'] != 0:
-                        error_msg = result.get('errmsg', 'Unknown error')
-                        raise Exception(f"API error: {error_msg} (code: {result['errcode']})")
+                    # Handle API errors
+                    self._handle_wechat_api_error(result, "上传媒体文件")
                     
                     if 'media_id' not in result:
-                        error_msg = result.get('errmsg', 'Unknown error')
-                        raise Exception(f"Failed to upload media: {error_msg}")
+                        raise Exception(f"Failed to upload media: 缺少media_id字段")
                     
                     return result['media_id']
             
@@ -411,8 +571,8 @@ class WeChatPublisher:
                 # Get response text and try to parse as JSON regardless of content type
                 response_text = await response.text()
                 
-                # Debug: Print first 200 chars of response for troubleshooting
-                print(f"DEBUG: Response (first 200 chars): {response_text[:200]}")
+                # Debug: Log first 200 chars of response for troubleshooting
+                logger.debug(f"Response (first 200 chars): {response_text[:200]}")
                 
                 try:
                     result = json.loads(response_text)
@@ -420,14 +580,11 @@ class WeChatPublisher:
                     content_type = response.headers.get('content-type', '')
                     raise Exception(f"Failed to parse JSON response from {content_type}: {e}\nResponse content: {response_text[:500]}")
                 
-                # Check if response contains an error
-                if 'errcode' in result and result['errcode'] != 0:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"API error: {error_msg} (code: {result['errcode']})")
+                # Handle API errors
+                self._handle_wechat_api_error(result, "添加草稿")
                 
                 if 'media_id' not in result:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"Failed to add draft: {error_msg}")
+                    raise Exception(f"Failed to add draft: 缺少media_id字段")
                 
                 return result['media_id']
 
@@ -503,8 +660,8 @@ class WeChatPublisher:
                 # Get response text and try to parse as JSON regardless of content type
                 response_text = await response.text()
                 
-                # Debug: Print first 200 chars of response for troubleshooting
-                print(f"DEBUG: Response (first 200 chars): {response_text[:200]}")
+                # Debug: Log first 200 chars of response for troubleshooting
+                logger.debug(f"Response (first 200 chars): {response_text[:200]}")
                 
                 try:
                     result = json.loads(response_text)
@@ -512,14 +669,11 @@ class WeChatPublisher:
                     content_type = response.headers.get('content-type', '')
                     raise Exception(f"Failed to parse JSON response from {content_type}: {e}\nResponse content: {response_text[:500]}")
                 
-                # Check if response contains an error
-                if 'errcode' in result and result['errcode'] != 0:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"API error: {error_msg} (code: {result['errcode']})")
+                # Handle API errors
+                self._handle_wechat_api_error(result, "添加草稿")
                 
                 if 'media_id' not in result:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"Failed to add draft: {error_msg}")
+                    raise Exception(f"Failed to add draft: 缺少media_id字段")
                 
                 return result['media_id']
 
@@ -542,35 +696,57 @@ class WeChatPublisher:
             Dictionary with media_id and other response data
         """
         try:
+            logger.info(f"开始发布文章到草稿箱")
+            logger.info(f"文章标题: {title}")
+            logger.info(f"是否有封面: {'是' if cover else '否'}")
+            logger.info(f"作者: {author}")
+            logger.info(f"内容长度: {len(content)} 字符")
+            
             # Upload cover image if provided
-            cover_media_id = ''
-            if cover:
-                # Always upload cover as permanent thumb material
-                # This ensures it's available for future use and meets WeChat requirements
-                cover_media_id = await self.upload_permanent_material(cover, 'thumb')
-            elif self._extract_first_image(content):
-                # Use first image in content as cover if no cover specified
-                first_image = self._extract_first_image(content)
-                cover_media_id = await self.upload_permanent_material(first_image, 'thumb')
-            else:
-                # Create a default cover if no image provided (WeChat API requires thumb_media_id)
-                cover_media_id = await self._create_default_cover()
+            logger.info(f"开始处理封面图片...")
+            cover_media_id = await self._get_or_create_cover(cover, content)
+            logger.info(f"封面处理完成，media_id: {cover_media_id}")
 
             # Add as draft using new API
+            logger.info(f"开始添加到草稿箱...")
             media_id = await self._add_draft_with_options(
                 title, content, cover_media_id, author, 
                 need_open_comment, only_fans_can_comment
             )
+            logger.info(f"草稿添加成功，media_id: {media_id}")
             
-            return {
-                'media_id': media_id,
-                'title': title,
-                'status': 'success',
-                'cover_media_id': cover_media_id
-            }
+            result = self._build_publish_result(media_id, title, cover_media_id)
+            logger.info(f"发布结果: {result}")
+            return result
             
         except Exception as e:
-            raise Exception(f"Failed to publish to draft: {str(e)}")
+            logger.error(f"发布到草稿箱失败: {str(e)}")
+            import traceback
+            logger.error(f"错误堆栈: {traceback.format_exc()}")
+            raise
+    
+    async def _get_or_create_cover(self, cover: str, content: str) -> str:
+        """Get cover media ID from provided cover or create one."""
+        if cover:
+            # Always upload cover as permanent thumb material
+            # This ensures it's available for future use and meets WeChat requirements
+            return await self.upload_permanent_material(cover, 'thumb')
+        elif self._extract_first_image(content):
+            # Use first image in content as cover if no cover specified
+            first_image = self._extract_first_image(content)
+            return await self.upload_permanent_material(first_image, 'thumb')
+        else:
+            # Create a default cover if no image provided (WeChat API requires thumb_media_id)
+            return await self._create_default_cover()
+    
+    def _build_publish_result(self, media_id: str, title: str, cover_media_id: str) -> Dict[str, str]:
+        """Build publish result dictionary."""
+        return {
+            'media_id': media_id,
+            'title': title,
+            'status': 'success',
+            'cover_media_id': cover_media_id
+        }
 
     def _extract_first_image(self, html_content: str) -> Optional[str]:
         """Extract first image URL from HTML content."""
@@ -760,63 +936,13 @@ class WeChatPublisher:
     
     def _needs_encoding_fix(self, content):
         """检测是否需要编码修复"""
-        if not content:
-            return False
-        
-        # 检测常见的编码问题
-        encoding_issues = [
-            r'\\x[0-9a-fA-F]{2}',      # 十六进制编码如 \\x3c
-            r'\\\\u[0-9a-fA-F]{4}',  # 双反斜杠Unicode转义
-            r'\\u[0-9a-fA-F]{4}',      # Unicode转义
-            r'&amp;|&lt;|&gt;|&quot;',  # HTML实体
-        ]
-        
-        for pattern in encoding_issues:
-            try:
-                if re.search(pattern, content):
-                    return True
-            except re.error:
-                continue
-        
-        return False
+        from ..utils.encoding import enconding_utils
+        return enconding_utils.needs_encoding_fix(content)
     
     def _fix_encoding_carefully(self, content):
         """谨慎修复编码问题"""
-        if not content or not isinstance(content, str):
-            return content
-        
-        try:
-            logger.debug(f"开始谨慎修复编码，内容长度: {len(content)}")
-            
-            # 修复十六进制编码错误（如 \\x3c -> <）
-            content = re.sub(r'\\x3c', '<', content)
-            content = re.sub(r'\\x3e', '>', content)
-            content = re.sub(r'\\x22', '"', content)
-            content = re.sub(r'\\x27', "'", content)
-            content = re.sub(r'\\x5c', '\\\\', content)
-            
-            # 处理双反斜杠Unicode转义（如 \\\\u4e2d -> \\u4e2d）
-            content = re.sub(r'\\\\u([0-9a-fA-F]{4})', r'\\u\1', content)
-            
-            # 谨慎地处理Unicode转义序列
-            # 只对确认是转义序列的部分进行解码
-            if '\\u' in content:
-                try:
-                    content = content.encode('utf-8').decode('unicode_escape')
-                except Exception as decode_error:
-                    logger.warning(f"Unicode解码失败: {decode_error}")
-                    # 如果失败，尝试只修复明显的Unicode转义
-                    content = re.sub(r'\\u([0-9a-fA-F]{4})', lambda m: chr(int(m.group(1), 16)), content)
-            
-            # 最后解码HTML实体
-            content = html.unescape(content)
-            
-            logger.debug(f"谨慎修复编码完成，内容长度: {len(content)}")
-            return content
-            
-        except Exception as e:
-            logger.warning(f"谨慎修复编码时出错: {e}")
-            return content
+        from ..utils.encoding import enconding_utils
+        return enconding_utils.fix_encoding(content)
 
     # ========== Extended Media Upload Methods ==========
     
@@ -887,22 +1013,19 @@ class WeChatPublisher:
                 
                 response_text = await response.text()
                 
-                # Debug: Print first 200 chars of response for troubleshooting
-                print(f"DEBUG: News material upload response (first 200 chars): {response_text[:200]}")
+                # Debug: Log first 200 chars of response for troubleshooting
+                logger.debug(f"News material upload response (first 200 chars): {response_text[:200]}")
                 
                 try:
                     result = json.loads(response_text)
                 except json.JSONDecodeError as e:
                     raise Exception(f"Failed to parse JSON response: {e}\nResponse: {response_text[:500]}")
                 
-                # Check if response contains an error
-                if 'errcode' in result and result['errcode'] != 0:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"API error: {error_msg} (code: {result['errcode']})")
+                # Handle API errors
+                self._handle_wechat_api_error(result, "上传图文素材")
                 
                 if 'media_id' not in result:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"Failed to upload news material: {error_msg}")
+                    raise Exception(f"Failed to upload news material: 缺少media_id字段")
                 
                 return result['media_id']
     
@@ -948,22 +1071,19 @@ class WeChatPublisher:
                 
                 response_text = await response.text()
                 
-                # Debug: Print first 200 chars of response for troubleshooting
-                print(f"DEBUG: Image upload response (first 200 chars): {response_text[:200]}")
+                # Debug: Log first 200 chars of response for troubleshooting
+                logger.debug(f"Image upload response (first 200 chars): {response_text[:200]}")
                 
                 try:
                     result = json.loads(response_text)
                 except json.JSONDecodeError as e:
                     raise Exception(f"Failed to parse JSON response: {e}\nResponse: {response_text[:500]}")
                 
-                # Check if response contains an error
-                if 'errcode' in result and result['errcode'] != 0:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"API error: {error_msg} (code: {result['errcode']})")
+                # Handle API errors
+                self._handle_wechat_api_error(result, "上传新闻图片")
                 
                 if 'url' not in result:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"Failed to upload image for news: {error_msg}")
+                    raise Exception(f"Failed to upload image for news: 缺少url字段")
                 
                 return result['url']
     
@@ -1039,17 +1159,15 @@ class WeChatPublisher:
                 
                 response_text = await response.text()
                 
-                # Debug: Print first 200 chars of response for troubleshooting
-                print(f"DEBUG: Delete response (first 200 chars): {response_text[:200]}")
+                # Debug: Log first 200 chars of response for troubleshooting
+                logger.debug(f"Delete response (first 200 chars): {response_text[:200]}")
                 
                 try:
                     result = json.loads(response_text)
                 except json.JSONDecodeError as e:
                     raise Exception(f"Failed to parse JSON response: {e}\nResponse: {response_text[:500]}")
                 
-                # Check if response contains an error
-                if 'errcode' in result and result['errcode'] != 0:
-                    error_msg = result.get('errmsg', 'Unknown error')
-                    raise Exception(f"API error: {error_msg} (code: {result['errcode']})")
+                # Handle API errors
+                self._handle_wechat_api_error(result, "删除永久素材")
                 
                 return result.get('errcode') == 0

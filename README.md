@@ -15,7 +15,12 @@
 - 📱 **微信公众号集成** - 直接发布到公众号草稿箱
 - 🔌 **MCP协议** - 基于模型上下文协议，可与AI助手无缝集成
 - 📁 **多媒体管理** - 支持临时/永久素材上传、管理和删除
-- 🛠️ **丰富工具集** - 提供7个专业MCP工具，覆盖发布、管理全流程
+- 🛠️ **丰富工具集** - 提供10个专业MCP工具，覆盖发布、管理全流程
+- 🔍 **统一编码处理** - 智能处理各种编码问题，确保内容显示正常
+- 🎭 **主题预览功能** - 支持主题效果预览，便于选择合适的主题
+- 🧰 **自定义主题支持** - 允许添加和更新自定义主题
+- 🛡️ **优化的错误处理** - 提供详细的错误信息和友好的用户提示
+- 🏗️ **模块化设计** - 代码结构清晰，易于维护和扩展
 
 ## 主题预览
 
@@ -98,12 +103,52 @@ python run.py
 }
 ```
 
-### 环境变量
+### 环境变量与交互式配置
 
-需要在环境中设置微信公众号的API凭证：
+#### 交互式配置（推荐）
+
+启动服务器时，会自动检查微信公众号API凭证是否设置：
+- 如果未设置，会**交互式提示**您输入凭证
+- 使用安全的输入方式，**App Secret会被隐藏**，保护隐私
+- 支持将凭证保存到`.env`文件，下次自动加载
+
+#### 手动环境变量设置
+
+您也可以通过以下方式手动设置环境变量：
 
 - `WECHAT_APP_ID` - 微信公众号App ID
 - `WECHAT_APP_SECRET` - 微信公众号App Secret
+
+#### 命令行选项
+
+- `--reconfigure` 或 `-r`：强制重新配置微信API凭证
+- `--debug` 或 `-d`：启用调试日志
+
+例如：
+```bash
+python run.py --reconfigure
+```
+
+#### 凭证管理工具
+
+项目提供了独立的凭证管理脚本 `credentials_manager.py`，用于管理微信API凭证：
+
+```bash
+# 查看当前凭证（隐藏敏感信息）
+python credentials_manager.py view
+
+# 更新凭证
+python credentials_manager.py update
+
+# 删除凭证
+python credentials_manager.py delete
+```
+
+**功能特点**：
+- 安全显示：App Secret只显示前3位和后3位，中间用***隐藏
+- 输入验证：自动验证App ID和App Secret格式
+- 环境变量同步：更新凭证时自动同步到环境变量和.env文件
+- 操作确认：删除操作需要确认，防止误操作
 
 ### 文章格式
 
@@ -122,7 +167,7 @@ cover: /path/to/cover/image.jpg
 
 ## MCP工具接口
 
-xiayan-mcp 提供以下7个专业工具：
+xiayan-mcp 提供以下10个专业工具：
 
 ### 1. `publish_article` - 发布文章
 将Markdown文章发布到微信公众号草稿箱，支持主题选择和高级选项。
@@ -137,6 +182,12 @@ xiayan-mcp 提供以下7个专业工具：
 
 ### 2. `list_themes` - 列出主题
 获取所有可用的主题信息。
+
+**参数：**
+- `detailed`（可选）：是否返回详细信息，默认false
+
+**返回：**
+- 主题列表，包含id、name、description等信息，详细模式下包含主题是否有自定义模板和CSS的标记
 
 ### 3. `upload_temp_media` - 上传临时素材
 上传临时媒体文件，有效期3天。
@@ -173,6 +224,42 @@ xiayan-mcp 提供以下7个专业工具：
 
 **参数：**
 - `media_id`（必需）：要删除的素材media_id
+
+### 8. `preview_theme` - 主题预览
+获取指定主题的HTML预览，可用于查看主题效果。
+
+**参数：**
+- `theme_id`（必需）：要预览的主题ID
+- `sample_content`（可选）：用于预览的示例内容，默认使用内置示例
+
+**返回：**
+- 完整的HTML预览，可直接在浏览器中打开查看主题效果
+
+### 9. `add_custom_theme` - 添加自定义主题
+添加自定义主题到主题管理器。
+
+**参数：**
+- `id`（必需）：自定义主题的唯一ID
+- `name`（必需）：自定义主题的名称
+- `description`（必需）：自定义主题的描述
+- `template`（可选）：自定义HTML模板，默认使用内置模板
+- `css_styles`（可选）：自定义CSS样式，默认使用内置样式
+
+**返回：**
+- 成功添加主题的提示信息
+
+### 10. `update_theme` - 更新主题
+更新现有主题的属性。
+
+**参数：**
+- `theme_id`（必需）：要更新的主题ID
+- `name`（可选）：新的主题名称
+- `description`（可选）：新的主题描述
+- `template`（可选）：新的HTML模板
+- `css_styles`（可选）：新的CSS样式
+
+**返回：**
+- 成功更新主题的提示信息
 
 ## 使用示例
 
@@ -238,18 +325,23 @@ xiayan-mcp/
 │       │   ├── __init__.py
 │       │   ├── formatter.py      # Markdown格式化器
 │       │   └── publisher.py      # 微信公众号发布器
-│       └── themes/               # 主题系统
-│           ├── __init__.py
-│           └── theme_manager.py  # 主题管理器
+│       ├── publish/              # 发布相关模块
+│       │   └── __init__.py
+│       ├── themes/               # 主题系统
+│       │   ├── __init__.py
+│       │   ├── theme.py          # 主题类定义
+│       │   └── theme_manager.py  # 主题管理器
+│       └── utils/                # 工具类
+│           └── encoding.py       # 统一编码处理工具
 ├── tests/                        # 测试文件目录
-├── data/                         # 数据目录
-├── .env.example                  # 环境变量模板
 ├── .env                          # 实际环境变量配置
+├── .env.example                  # 环境变量模板
 ├── pyproject.toml               # Python项目配置
 ├── requirements.txt             # 依赖包列表
 ├── run.py                       # 主启动脚本
-├── mcp_server.py                # MCP服务器脚本
-├── fixed_run.py                 # 修复版启动脚本
+├── credentials_manager.py       # 凭证管理工具
+├── media_upload_guide.md        # 媒体上传指南
+├── xiayan-mcp 启动指南.md       # 启动指南
 └── README.md                    # 项目说明文档
 ```
 
@@ -396,8 +488,19 @@ xiayan-mcp支持多种启动方式：
 1. **基础启动**：`python run.py`
 2. **包管理启动**：`xiayan-mcp`（需先安装 `pip install -e .`）
 3. **模块启动**：`python -m xiayan_mcp.server`
-4. **修复启动**：`python fixed_run.py`（解决编码问题）
-5. **MCP服务器启动**：`python mcp_server.py`
+
+### 启动提示
+
+运行启动命令后，会显示中文提示信息，指导用户了解服务状态：
+
+```
+=== 夏颜公众号助手 (xiayan-mcp) ===
+正在启动MCP服务器...
+正在初始化xiayan-mcp服务器...
+服务器初始化完成，正在启动MCP服务...
+MCP服务器已就绪，正在等待请求...
+提示：使用Ctrl+C可以停止服务器
+```
 
 ### 测试文件
 
@@ -411,6 +514,17 @@ xiayan-mcp支持多种启动方式：
 本项目采用 Apache License 2.0 许可证。详情请见 [LICENSE](LICENSE) 文件。
 
 ## 更新日志
+
+### v0.2.0
+- ✨ 新增主题预览功能，支持主题效果实时查看
+- 🎭 支持添加和更新自定义主题
+- 🔍 统一编码处理工具，智能处理各种编码问题
+- 📝 新增3个MCP工具：`preview_theme`、`add_custom_theme`、`update_theme`
+- 🛡️ 优化微信API错误处理，提供详细的错误信息
+- 🔧 代码结构优化，拆分大型函数，提高可维护性
+- 📊 统一日志记录，替换所有print语句为logger
+- 🧪 新增统一编码处理工具的测试用例
+- 📚 更新文档，添加新功能说明和使用指南
 
 ### v0.1.0
 - ✨ 新增完整的微信公众号多媒体上传功能

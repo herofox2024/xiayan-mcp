@@ -41,11 +41,23 @@ xiayan-mcp使用以下核心依赖：
 3. 获取`AppID`和`AppSecret`
 
 ### 配置环境变量
-```bash
-# 复制配置模板
-cp .env.example .env
 
-# 编辑配置文件，填入你的API凭证
+#### 方式一：交互式配置（推荐）
+
+启动服务器时，系统会自动检查微信公众号API凭证是否设置：
+- 如果未设置，会**交互式提示**您输入凭证
+- 使用安全的输入方式，**App Secret会被隐藏**，保护隐私
+- 支持将凭证保存到`.env`文件，下次自动加载
+
+```bash
+python run.py
+```
+
+#### 方式二：手动编辑.env文件
+
+创建 `.env` 文件并配置环境变量：
+
+```bash
 # Windows
 notepad .env
 
@@ -75,15 +87,30 @@ HOST_IMAGE_PATH=/path/to/local/images
 ```bash
 # 使用启动脚本（自动配置Python路径）
 python run.py
+
+# 强制重新配置微信API凭证
+python run.py --reconfigure
+# 或使用短选项
+python run.py -r
+
+# 启用调试日志
+python run.py --debug
+# 或使用短选项
+python run.py -d
 ```
+
+#### 命令行选项说明
+- `--reconfigure` 或 `-r`：强制重新配置微信API凭证
+- `--debug` 或 `-d`：启用调试日志，用于排查问题
 
 **启动成功输出示例：**
 ```
-INFO:xiayan_mcp.server:Initializing xiayan-mcp server...
-INFO:xiayan_mcp.server:Loading themes...
-INFO:xiayan_mcp.server:Themes loaded: default, orangeheart, rainbow, lapis, pie, maize, purple, phycat
-INFO:xiayan_mcp.server:Server started successfully
-INFO:xiayan_mcp.server:Waiting for MCP connections...
+=== 夏颜公众号助手 (xiayan-mcp) ===
+正在启动MCP服务器...
+正在初始化xiayan-mcp服务器...
+服务器初始化完成，正在启动MCP服务...
+MCP服务器已就绪，正在等待请求...
+提示：使用Ctrl+C可以停止服务器
 ```
 
 ### 方式二：使用包管理器运行
