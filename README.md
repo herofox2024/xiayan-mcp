@@ -543,6 +543,10 @@ MCP服务器已就绪，正在等待请求...
 - [MCP SDK](https://github.com/modelcontextprotocol/servers) - 模型上下文协议
 - [Python-Markdown](https://python-markdown.github.io/) - Markdown解析库
 
+  ## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=herofox2024/xiayan-mcp&type=date&legend=top-left)](https://www.star-history.com/#herofox2024/xiayan-mcp&type=date&legend=top-left)
+
 ## 联系方式
 
 - 项目主页: https://github.com/herofox2024/xiayan-mcp
